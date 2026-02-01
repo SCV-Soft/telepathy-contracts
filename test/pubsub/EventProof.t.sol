@@ -19,6 +19,20 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EventProof} from "src/pubsub/EventProof.sol";
 import {EventProofFixture} from "test/pubsub/EventProofFixture.sol";
 
+/// @notice Wrapper contract to make library calls external for vm.expectRevert testing
+contract EventProofWrapper {
+    function parseEvent(
+        bytes[] memory proof,
+        bytes32 receiptsRoot,
+        bytes memory key,
+        uint256 logIndex,
+        address logSource,
+        bytes32 eventSig
+    ) external pure returns (bytes32[] memory, bytes memory) {
+        return EventProof.parseEvent(proof, receiptsRoot, key, logIndex, logSource, eventSig);
+    }
+}
+
 contract EventProofTest is Test, EventProofFixture {
     using RLPReader for bytes;
     using RLPReader for RLPReader.RLPItem;
@@ -27,8 +41,11 @@ contract EventProofTest is Test, EventProofFixture {
     uint256 constant FIXTURE_END = 22;
 
     Fixture[] fixtures;
+    EventProofWrapper wrapper;
 
     function setUp() public {
+        wrapper = new EventProofWrapper();
+
         // read all event proof fixtures
         for (uint256 i = FIXTURE_START; i <= FIXTURE_END; i++) {
             uint256 msgNonce = i;
@@ -79,7 +96,7 @@ contract EventProofTest is Test, EventProofFixture {
             bytes[] memory receiptProof = buildProof(fixture);
 
             vm.expectRevert("Event was not emitted by source contract");
-            EventProof.parseEvent(
+            wrapper.parseEvent(
                 receiptProof,
                 fixture.receiptsRoot,
                 vm.parseBytes(fixture.key),
@@ -97,7 +114,7 @@ contract EventProofTest is Test, EventProofFixture {
             bytes[] memory receiptProof = buildProof(fixture);
 
             vm.expectRevert("Event signature does not match");
-            EventProof.parseEvent(
+            wrapper.parseEvent(
                 receiptProof,
                 fixture.receiptsRoot,
                 vm.parseBytes(fixture.key),
