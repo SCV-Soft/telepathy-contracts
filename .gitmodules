@@ -18,7 +18,7 @@
 	branch = main
 [submodule "lib/telepathy-v2"]
 	path = lib/telepathy-v2
-	url = https://github.com/succinctlabs/telepathy-v2
+	url = https://github.com/succinctlabs/succinctx
 	branch = main
 [submodule "lib/safe-contracts"]
 	path = lib/safe-contracts
