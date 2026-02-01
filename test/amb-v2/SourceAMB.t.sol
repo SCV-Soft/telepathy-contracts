@@ -122,6 +122,7 @@ contract SourceAMBV2Test is Test {
     }
 
     function testFuzz_Send_MsgSender(address _sender) public {
+        vm.assume(_sender != address(0));
         vm.deal(_sender, DEFAULT_FEE);
         vm.startPrank(_sender);
         bytes memory expectedMessage = Message.encode(

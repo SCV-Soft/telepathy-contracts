@@ -29,7 +29,6 @@ contract LightClientTest is Test, LightClientFixture {
     OptLightClientFixture.OptFixture[] optFixtures;
 
     function setUp() public {
-        // read all fixtures from entire directory
         string memory root = vm.projectRoot();
         for (uint256 i = FIXTURE_SLOT_START; i <= FIXTURE_SLOT_END; i++) {
             uint256 slot = i;
@@ -38,8 +37,7 @@ contract LightClientTest is Test, LightClientFixture {
             string memory path =
                 string.concat(root, "/test/lightclient/fixtures/", filename, ".json");
             try vm.readFile(path) returns (string memory file) {
-                bytes memory parsed = vm.parseJson(file);
-                try this.decodeFixture(parsed) returns (Fixture memory f) {
+                try this.parseFixtureFromJson(file) returns (Fixture memory f) {
                     fixtures.push(f);
                 } catch {
                     continue;
@@ -56,8 +54,7 @@ contract LightClientTest is Test, LightClientFixture {
             string memory path =
                 string.concat(root, "/test/lightclient/fixtures/", filename, ".json");
             try vm.readFile(path) returns (string memory file) {
-                bytes memory parsed = vm.parseJson(file);
-                try this.decodeOptFixture(parsed) returns (OptLightClientFixture.OptFixture memory f) {
+                try this.parseOptFixtureFromJson(file) returns (OptLightClientFixture.OptFixture memory f) {
                     optFixtures.push(f);
                 } catch {
                     continue;
@@ -70,12 +67,118 @@ contract LightClientTest is Test, LightClientFixture {
         vm.warp(9999999999999);
     }
 
-    function decodeFixture(bytes memory data) external pure returns (Fixture memory) {
-        return abi.decode(data, (Fixture));
+    function parseFixtureFromJson(string memory file) external returns (Fixture memory) {
+        return _parseFixtureFromJson(file);
     }
 
-    function decodeOptFixture(bytes memory data) external pure returns (OptLightClientFixture.OptFixture memory) {
-        return abi.decode(data, (OptLightClientFixture.OptFixture));
+    function parseOptFixtureFromJson(string memory file)
+        external
+        returns (OptLightClientFixture.OptFixture memory)
+    {
+        return _parseOptFixtureFromJson(file);
+    }
+
+    function _parseBytes32(string memory json, string memory key) internal pure returns (bytes32) {
+        return abi.decode(vm.parseJson(json, key), (bytes32));
+    }
+
+    function _parseFixtureFromJson(string memory file) internal returns (Fixture memory) {
+        Initial memory initial = Initial({
+            genesisTime: bytes(vm.parseJsonString(file, ".initial.genesisTime")),
+            genesisValidatorsRoot: _parseBytes32(file, ".initial.genesisValidatorsRoot"),
+            secondsPerSlot: vm.parseJsonUint(file, ".initial.secondsPerSlot"),
+            slotsPerPeriod: vm.parseJsonUint(file, ".initial.slotsPerPeriod"),
+            syncCommitteePeriod: vm.parseJsonUint(file, ".initial.syncCommitteePeriod"),
+            syncCommitteePoseidon: vm.parseJsonString(file, ".initial.syncCommitteePoseidon")
+        });
+
+        string[][] memory stepB = new string[][](2);
+        stepB[0] = vm.parseJsonStringArray(file, ".step.b[0]");
+        stepB[1] = vm.parseJsonStringArray(file, ".step.b[1]");
+        Step memory step = Step({
+            a: vm.parseJsonStringArray(file, ".step.a"),
+            attestedSlot: vm.parseJsonUint(file, ".step.attestedSlot"),
+            b: stepB,
+            c: vm.parseJsonStringArray(file, ".step.c"),
+            executionStateRoot: _parseBytes32(file, ".step.executionStateRoot"),
+            finalizedHeaderRoot: _parseBytes32(file, ".step.finalizedHeaderRoot"),
+            finalizedSlot: vm.parseJsonUint(file, ".step.finalizedSlot"),
+            inputs: vm.parseJsonStringArray(file, ".step.inputs"),
+            participation: vm.parseJsonString(file, ".step.participation")
+        });
+
+        string[][] memory rotateB = new string[][](2);
+        rotateB[0] = vm.parseJsonStringArray(file, ".rotate.b[0]");
+        rotateB[1] = vm.parseJsonStringArray(file, ".rotate.b[1]");
+        Rotate memory rotate = Rotate({
+            a: vm.parseJsonStringArray(file, ".rotate.a"),
+            b: rotateB,
+            c: vm.parseJsonStringArray(file, ".rotate.c"),
+            syncCommitteePoseidon: vm.parseJsonString(file, ".rotate.syncCommitteePoseidon"),
+            syncCommitteeSSZ: _parseBytes32(file, ".rotate.syncCommitteeSSZ")
+        });
+
+        return Fixture({initial: initial, rotate: rotate, step: step});
+    }
+
+    function _parseOptFixtureFromJson(string memory file)
+        internal
+        returns (OptLightClientFixture.OptFixture memory)
+    {
+        OptLightClientFixture.Initial memory initial = OptLightClientFixture.Initial({
+            genesisTime: bytes(vm.parseJsonString(file, ".initial.genesisTime")),
+            genesisValidatorsRoot: _parseBytes32(file, ".initial.genesisValidatorsRoot"),
+            secondsPerSlot: vm.parseJsonUint(file, ".initial.secondsPerSlot"),
+            slotsPerPeriod: vm.parseJsonUint(file, ".initial.slotsPerPeriod"),
+            syncCommitteePeriod: vm.parseJsonUint(file, ".initial.syncCommitteePeriod"),
+            syncCommitteePoseidon: vm.parseJsonString(file, ".initial.syncCommitteePoseidon")
+        });
+
+        string[][] memory stepB = new string[][](2);
+        stepB[0] = vm.parseJsonStringArray(file, ".step.b[0]");
+        stepB[1] = vm.parseJsonStringArray(file, ".step.b[1]");
+        OptLightClientFixture.Step memory step = OptLightClientFixture.Step({
+            a: vm.parseJsonStringArray(file, ".step.a"),
+            attestedSlot: vm.parseJsonUint(file, ".step.attestedSlot"),
+            b: stepB,
+            c: vm.parseJsonStringArray(file, ".step.c"),
+            executionStateRoot: _parseBytes32(file, ".step.executionStateRoot"),
+            finalizedHeaderRoot: _parseBytes32(file, ".step.finalizedHeaderRoot"),
+            finalizedSlot: vm.parseJsonUint(file, ".step.finalizedSlot"),
+            inputs: vm.parseJsonStringArray(file, ".step.inputs"),
+            participation: vm.parseJsonString(file, ".step.participation")
+        });
+
+        string[][] memory rotateB = new string[][](2);
+        rotateB[0] = vm.parseJsonStringArray(file, ".rotate.b[0]");
+        rotateB[1] = vm.parseJsonStringArray(file, ".rotate.b[1]");
+        OptLightClientFixture.Rotate memory rotate = OptLightClientFixture.Rotate({
+            a: vm.parseJsonStringArray(file, ".rotate.a"),
+            b: rotateB,
+            c: vm.parseJsonStringArray(file, ".rotate.c"),
+            syncCommitteePoseidon: vm.parseJsonString(file, ".rotate.syncCommitteePoseidon"),
+            syncCommitteeSSZ: _parseBytes32(file, ".rotate.syncCommitteeSSZ")
+        });
+
+        string[][] memory optimizedRotateB = new string[][](2);
+        optimizedRotateB[0] = vm.parseJsonStringArray(file, ".optimizedRotate.b[0]");
+        optimizedRotateB[1] = vm.parseJsonStringArray(file, ".optimizedRotate.b[1]");
+        OptLightClientFixture.OptimizedRotate memory optimizedRotate = OptLightClientFixture
+            .OptimizedRotate({
+            a: vm.parseJsonStringArray(file, ".optimizedRotate.a"),
+            b: optimizedRotateB,
+            c: vm.parseJsonStringArray(file, ".optimizedRotate.c"),
+            publicInputsRoot: vm.parseJsonString(file, ".optimizedRotate.publicInputsRoot"),
+            syncCommitteePoseidon: vm.parseJsonString(file, ".optimizedRotate.syncCommitteePoseidon"),
+            syncCommitteeSSZ: _parseBytes32(file, ".optimizedRotate.syncCommitteeSSZ")
+        });
+
+        return OptLightClientFixture.OptFixture({
+            initial: initial,
+            optimizedRotate: optimizedRotate,
+            rotate: rotate,
+            step: step
+        });
     }
 
     function test_SetUp() public view {
@@ -220,13 +323,7 @@ contract LightClientTest is Test, LightClientFixture {
         string memory path = string.concat(
             vm.projectRoot(), "/test/lightclient/fixtures/periodBoundaryEarlySlot.json"
         );
-        bytes memory parsed = vm.parseJson(vm.readFile(path));
-        Fixture memory fixture;
-        try this.decodeFixture(parsed) returns (Fixture memory f) {
-            fixture = f;
-        } catch {
-            return; // Skip if fixture cannot be decoded
-        }
+        Fixture memory fixture = _parseFixtureFromJson(vm.readFile(path));
 
         uint256 attestedSlotPeriod = fixture.step.attestedSlot / fixture.initial.slotsPerPeriod;
         uint256 finalizedSlotPeriod = fixture.step.finalizedSlot / fixture.initial.slotsPerPeriod;
@@ -251,13 +348,7 @@ contract LightClientTest is Test, LightClientFixture {
         string memory path = string.concat(
             vm.projectRoot(), "/test/lightclient/fixtures/periodBoundaryLateSlot.json"
         );
-        bytes memory parsed = vm.parseJson(vm.readFile(path));
-        Fixture memory fixture;
-        try this.decodeFixture(parsed) returns (Fixture memory f) {
-            fixture = f;
-        } catch {
-            return; // Skip if fixture cannot be decoded
-        }
+        Fixture memory fixture = _parseFixtureFromJson(vm.readFile(path));
 
         uint256 attestedSlotPeriod = fixture.step.attestedSlot / fixture.initial.slotsPerPeriod;
         uint256 finalizedSlotPeriod = fixture.step.finalizedSlot / fixture.initial.slotsPerPeriod;
