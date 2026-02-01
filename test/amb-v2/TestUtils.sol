@@ -14,7 +14,7 @@ import {Bytes32} from "src/libraries/Typecast.sol";
 import {TelepathyEventVerifier} from "src/amb-v2/verifier/TelepathyEventVerifier.sol";
 import {TelepathyAttestationVerifier} from "src/amb-v2/verifier/TelepathyAttestationVerifier.sol";
 import {VerifierType} from "src/amb-v2/verifier/interfaces/IMessageVerifier.sol";
-import {SuccinctFeeVault} from "@telepathy-v2/payment/SuccinctFeeVault.sol";
+import {SuccinctFeeVault} from "@telepathy-v2/payments/SuccinctFeeVault.sol";
 
 library WrappedInitialize {
     function initializeRouter(
@@ -26,8 +26,10 @@ library WrappedInitialize {
         address _timelock,
         address _guardian
     ) internal returns (address, address, address) {
+        SuccinctFeeVault feeVault = new SuccinctFeeVault();
+        feeVault.initialize(_guardian);
         TelepathyRouterV2(_targetAMB).initialize(
-            true, true, address(new SuccinctFeeVault(_guardian)), _timelock, _guardian
+            true, true, address(feeVault), _timelock, _guardian
         );
 
         return
