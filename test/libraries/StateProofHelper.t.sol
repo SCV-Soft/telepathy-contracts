@@ -9,6 +9,31 @@ import {RLPWriter} from "@optimism-bedrock/rlp/RLPWriter.sol";
 import {MerkleTrie} from "@optimism-bedrock/trie/MerkleTrie.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
+/// @notice Wrapper contracts to make library calls external for vm.expectRevert testing
+contract StorageProofWrapper {
+    function getStorageRoot(bytes[] memory proof, address contractAddress, bytes32 stateRoot)
+        external
+        pure
+        returns (bytes32)
+    {
+        return StorageProof.getStorageRoot(proof, contractAddress, stateRoot);
+    }
+}
+
+contract EventProofWrapper {
+    function getEventTopic(
+        bytes[] memory proof,
+        bytes32 receiptRoot,
+        bytes memory key,
+        uint256 logIndex,
+        address claimedEmitter,
+        bytes32 eventSignature,
+        uint256 topicIndex
+    ) external pure returns (bytes32) {
+        return EventProof.getEventTopic(proof, receiptRoot, key, logIndex, claimedEmitter, eventSignature, topicIndex);
+    }
+}
+
 contract StateProofHelperTest is Test, StateProofFixture {
     using RLPReader for bytes;
     using RLPReader for RLPReader.RLPItem;
@@ -20,8 +45,13 @@ contract StateProofHelperTest is Test, StateProofFixture {
 
     StorageProofFixture[] storageProofFixtures;
     EventProofFixture[] eventProofFixtures;
+    StorageProofWrapper storageWrapper;
+    EventProofWrapper eventWrapper;
 
     function setUp() public {
+        storageWrapper = new StorageProofWrapper();
+        eventWrapper = new EventProofWrapper();
+
         // read all storage proof fixtures
         string memory root = vm.projectRoot();
         for (uint256 i = STORAGE_PROOF_FIXTURE_START; i <= STORAGE_PROOF_FIXTURE_END; i++) {
@@ -168,18 +198,18 @@ contract StateProofHelperTest is Test, StateProofFixture {
         bytes[] memory proof = buildStorageProof(fixture);
 
         vm.expectRevert();
-        StorageProof.getStorageRoot(proof, fixture.contractAddress, fixture.stateRootHash);
+        storageWrapper.getStorageRoot(proof, fixture.contractAddress, fixture.stateRootHash);
     }
 
     function test_ReverStorageProof_WhenBadProof() public {
         StorageProofFixture memory fixture = storageProofFixtures[0];
 
-        fixture.proof[0] = "";
+        fixture.proof[0] = "0x";
 
         bytes[] memory proof = buildStorageProof(fixture);
 
         vm.expectRevert();
-        StorageProof.getStorageRoot(proof, fixture.contractAddress, fixture.stateRootHash);
+        storageWrapper.getStorageRoot(proof, fixture.contractAddress, fixture.stateRootHash);
     }
 
     function test_RevertStorageProof_WhenBadStateRootHash() public {
@@ -190,7 +220,7 @@ contract StateProofHelperTest is Test, StateProofFixture {
         bytes[] memory proof = buildStorageProof(fixture);
 
         vm.expectRevert();
-        StorageProof.getStorageRoot(proof, fixture.contractAddress, fixture.stateRootHash);
+        storageWrapper.getStorageRoot(proof, fixture.contractAddress, fixture.stateRootHash);
     }
 
     function test_RevertEventProof_WhenBadClaimedEmitter() public {
@@ -201,7 +231,7 @@ contract StateProofHelperTest is Test, StateProofFixture {
         bytes[] memory proof = buildEventProof(fixture);
 
         vm.expectRevert();
-        EventProof.getEventTopic(
+        eventWrapper.getEventTopic(
             proof,
             fixture.receiptsRoot,
             vm.parseBytes(fixture.key),
@@ -215,15 +245,13 @@ contract StateProofHelperTest is Test, StateProofFixture {
     function test_RevertEventProof_WhenBadKey() public {
         EventProofFixture memory fixture = eventProofFixtures[0];
 
-        fixture.key = "";
-
         bytes[] memory proof = buildEventProof(fixture);
 
         vm.expectRevert();
-        EventProof.getEventTopic(
+        eventWrapper.getEventTopic(
             proof,
             fixture.receiptsRoot,
-            vm.parseBytes(fixture.key),
+            hex"",
             fixture.logIndex,
             fixture.claimedEmitter,
             keccak256("SentMessage(uint64,bytes32,bytes)"),
@@ -239,7 +267,7 @@ contract StateProofHelperTest is Test, StateProofFixture {
         bytes[] memory proof = buildEventProof(fixture);
 
         vm.expectRevert();
-        EventProof.getEventTopic(
+        eventWrapper.getEventTopic(
             proof,
             fixture.receiptsRoot,
             vm.parseBytes(fixture.key),
@@ -253,12 +281,12 @@ contract StateProofHelperTest is Test, StateProofFixture {
     function test_RevertEventProof_WhenBadProof() public {
         EventProofFixture memory fixture = eventProofFixtures[0];
 
-        fixture.proof[0] = "";
+        fixture.proof[0] = "0x";
 
         bytes[] memory proof = buildEventProof(fixture);
 
         vm.expectRevert();
-        EventProof.getEventTopic(
+        eventWrapper.getEventTopic(
             proof,
             fixture.receiptsRoot,
             vm.parseBytes(fixture.key),
@@ -277,7 +305,7 @@ contract StateProofHelperTest is Test, StateProofFixture {
         bytes[] memory proof = buildEventProof(fixture);
 
         vm.expectRevert();
-        EventProof.getEventTopic(
+        eventWrapper.getEventTopic(
             proof,
             fixture.receiptsRoot,
             vm.parseBytes(fixture.key),
